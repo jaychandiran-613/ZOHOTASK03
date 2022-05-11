@@ -1,3 +1,4 @@
+/*
 #include<iostream>
 #include <windows.h> 
 #include<string.h>
@@ -46,18 +47,17 @@ int main(void)
     CloseHandle(hPipe);
     return (0);
 }
+*/
 
-
-/*
 #include<iostream>
 #include <windows.h> 
 #include<string.h>
 using namespace std;
+HANDLE hPipe;
+DWORD dwWritten,dwRead;
 #define FIFO_FILE "MYFIFO"
 class CLIENT{
     private:
-    HANDLE hPipe;
-    DWORD dwWritten,dwRead;
     char buffer[1024],sample[50];
     public:
     void createpipe()
@@ -98,14 +98,14 @@ int main()
     char sample[50];
     string buffer;
     for(int i=0;i<10;i++)
-    {   c.createpipe();
-        if(c.checkfile() != FALSE)
+    {   hPipe = CreateFile(TEXT("\\\\.\\pipe\\MYFIFO"), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+        if(hPipe!=INVALID_HANDLE_VALUE)
         {
             break;
         }
         Sleep(1000);
     }
-    if (c.checkfile() != FALSE)
+    if (hPipe != INVALID_HANDLE_VALUE)
     {
         while(1)
         {
@@ -133,4 +133,3 @@ int main()
     return (0);
 }
 
-*/
