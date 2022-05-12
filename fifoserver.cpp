@@ -52,13 +52,28 @@ class SERVER
 		}
 	}
 
-	void *checkwrite()
-	{   cout << "enter your message   : ";
+	void checkwrite()
+	{   
 		while (1)
 		{
+			cout << "enter your message   : ";
 			//mt.lock();
 			cin >> sample;
-			WriteFile(hPipe, sample, sizeof(sample), &dwWritten, NULL);
+
+			if(WriteFile(hPipe, sample, sizeof(sample), &dwWritten, NULL) == TRUE)
+			{
+				cout<<"The message written on the pipe.\n";
+			}
+			else
+			{
+				cout<<"The message unable to write on pipe.\n";
+			}
+
+			if(checksample() == 0)
+			{
+				break;
+			}
+
 			sleep(1);
 			//mt.unlock();
 		}
@@ -69,58 +84,62 @@ class SERVER
 		return strcmp(sample, "end");
 	}
 
-	void closehandle()
+	int closehandle()
 	{
-		CloseHandle(hPipe);
+		return CloseHandle(hPipe);
 	}
 
-	void connection()
+	int connection()
 	{
-		DisconnectNamedPipe(hPipe);
+		return DisconnectNamedPipe(hPipe);
 	}
+
 };
 int main(void)
 {
 	
 	SERVER s(PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
-	if (s.checkpipe() != 0)	//&& sleep(10) && ConnectNamedPipe(hPipe, NULL) != FALSE
-	{
-		for (int i = 0; i < 5; i++)
+	if(s.checkpipe() != 0)
+	{   cout<<"The namedpipe is created successfully.\n";
+		if(s.checkconnection() == TRUE)
 		{
-			if (s.checkconnection() == TRUE)
-			{
-				cout << "server is active\n";
-				break;
-			}
-
-			sleep(1000);
+			cout<<"The Client is connected successfully.\n";
+			//thread pt1(&SERVER::checkread, &s);
+	    	thread pt(&SERVER::checkwrite, &s);
+		    //pt1.join();
+		    pt.join();
 		}
-
-		thread pt1(&SERVER::checkread, &s);
-		thread pt(&SERVER::checkwrite, &s);
-		pt1.join();
-		pt.join();
-
-		// if(option == 0)
-		// {
-		//     s.checkread();
-		//     option = 1;
-		// }
-
-		// if(option == 1)
-		// {
-		//     s.checkwrite();
-		//     option = 0;
-		// }
-
-		// if(s.checksample()==0)
-		// {   
-		//     break;
-		// }
+		else
+		{
+			cout<<"Unable to connect to the client.\n";
+			return 0;
+		}
 	}
-
+	else
+	{
+		cout<<"Unable to Create the pipe\n";
+		return 0;
+	}
+    
 	cout << "The connection is broken.\n";
-	s.closehandle();
-	s.connection();
+	
+	if(s.connection() == 0)
+	{   cout<<GetLastError();
+		cout<<"Unable to disconnect the namedpipe.\n";
+	}
+	else
+	{
+		cout<<"The namedpipe disconnected successfull.\n";
+	}
+	
+	if(s.closehandle() == 0)
+	{
+		cout<<"Unable to close an open object handle.\n";
+	}
+	else
+	{
+		cout<<"Closes an open object handle.\n";
+	}
+	
 	return 0;
 }
