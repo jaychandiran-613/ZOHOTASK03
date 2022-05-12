@@ -2,7 +2,10 @@
 #include <unistd.h>
 #include <windows.h> 
 #include<string>
+#include<thread>
+#include<mutex>
 using namespace std;
+mutex mt;
 #define FIFO_FILE "MYFIFO"
 class SERVER{
     private:
@@ -12,30 +15,42 @@ class SERVER{
     DWORD dwRead,dwWritten;
     int option = 0;
     bool check = TRUE;
+
     public:
+
     SERVER(string a,string b,string c,string d)
     {
         hPipe = CreateNamedPipe(TEXT("\\\\.\\pipe\\MYFIFO"),PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT, NULL);
     }
+
     bool checkpipe()
     {
         return hPipe;
     }
+    
     bool checkconnection()
     {
         return ConnectNamedPipe(hPipe, NULL);    
     }
-    string checkread()
+    void* checkread()
     {
+        // mt.lock();
+        // sleep(1);
         ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL);
         buffer[dwRead] = '\0';
-        return buffer;
+        cout<<"\nThe received message : "<<buffer<<endl;
+        return 0;
+        //mt.unlock();
     }
-    void checkwrite()
+    void* checkwrite()
     {
+        // mt.lock();
         cout<<"enter your message   : ";
         cin>>sample;
         WriteFile(hPipe,sample,sizeof(sample), &dwWritten, NULL);
+        return 0;
+        // sleep(1);
+        // mt.unlock();
     }
     int checksample()
     {
@@ -69,21 +84,25 @@ int main(void)
             }  
             while (1)
             {   
-                if(option == 0)
-                {
-                    buffer = s.checkread();
-                    cout<<"The received message : "<<buffer<<endl;
-                    option = 1;
-                }
-                if(option == 1)
-                {
-                    s.checkwrite();
-                    option = 0;
-                }
-                if(s.checksample()==0)
-                {   
-                    break;
-                }
+                thread pt1 (&SERVER::checkread,&s);
+                thread pt (&SERVER::checkwrite,&s);
+                pt1.join();
+                pt.join();
+
+                // if(option == 0)
+                // {
+                //     s.checkread();
+                //     option = 1;
+                // }
+                // if(option == 1)
+                // {
+                //     s.checkwrite();
+                //     option = 0;
+                // }
+                // if(s.checksample()==0)
+                // {   
+                //     break;
+                // }
             }
             
     }

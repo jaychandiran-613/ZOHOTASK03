@@ -50,14 +50,20 @@ int main(void)
 */
 
 #include<iostream>
+#include <unistd.h>
 #include <windows.h> 
-#include<string.h>
+#include<string>
+#include<thread>
+#include<mutex>
 using namespace std;
 HANDLE hPipe;
 DWORD dwWritten,dwRead;
+mutex mt;
 #define FIFO_FILE "MYFIFO"
 class CLIENT{
     private:
+    // HANDLE hPipe;
+    // DWORD dwWritten,dwRead;
     char buffer[1024],sample[50];
     public:
     void createpipe()
@@ -70,20 +76,27 @@ class CLIENT{
         return hPipe;
     }
     void write()
-    {   
+    { 
+        mt.lock(); 
+        sleep(1); 
         cout<<"enter your message   : ";
         cin>>sample;
         WriteFile(hPipe, sample,sizeof(sample), &dwWritten, NULL);
+        mt.unlock();
     }
     int checksample()
     {
         return strcmp(sample,"end");
     }
-    string read()
+    void read()
     {
+        mt.lock();
+
         ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL);
         buffer[dwRead] = '\0';
-        return buffer;
+        cout<<"The received message : "<<buffer<<endl;
+        sleep(1);
+        mt.unlock();
     }
     void closeconnection()
     {
@@ -105,10 +118,16 @@ int main()
         }
         Sleep(1000);
     }
-    if (hPipe != INVALID_HANDLE_VALUE)
+    // c.createpipe();
+    if (hPipe != INVALID_HANDLE_VALUE)//hPipe != INVALID_HANDLE_VALUE
     {
         while(1)
         {
+                // thread pt2 (&CLIENT::write,&c);
+                // thread pt3 (&CLIENT::read,&c);
+                // pt3.join();
+                // pt2.join();
+
         if(option == 0)
         {   
             c.write();
@@ -120,8 +139,7 @@ int main()
         }
         if(option == 1)
         {
-            buffer = c.read();
-            cout<<"The received message : "<<buffer<<endl;
+            c.read();
             option = 0;
         }
         }
