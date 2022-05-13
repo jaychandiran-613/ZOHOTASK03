@@ -14,26 +14,44 @@ class CLIENT
 		DWORD dwWritten,dwRead;
 		char buffer[1024], sample[50];
 	public:
-	void createpipe()
-		{
-			hPipe = CreateFile(TEXT("\\\\.\\pipe\\MYFIFO"), GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-		}
+	static int check;
+	CLIENT(LPCSTR lpName, DWORD dwDesiredAccess1, DWORD dwDesiredAccess2, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile )
+	{
+		hPipe = CreateFile(lpName, dwDesiredAccess1 | dwDesiredAccess2, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile );
 
+	}
 	bool checkfile()
 	{
 		return hPipe;
 	}
 
-	void *write()
+	void write()
 	{
-        cout << "enter your message   : ";
 		while(1)
         {
-            //mt.lock();
-	    	sleep(1);
-		    cin >> sample;
-		    WriteFile(hPipe, sample, sizeof(sample), &dwWritten, NULL);
-		    //mt.unlock();
+            //cout << "enter your message   : ";
+			//mt.lock();
+			cin >> sample;
+			if(check == 0)
+			{
+				cin.ignore();
+				break;
+			}
+			if(WriteFile(hPipe, sample, sizeof(sample), &dwWritten, NULL) == TRUE)
+			{
+				cout<<"The message written on the pipe.\n\n";
+			}
+			else
+			{
+				cout<<"The message unable to write on pipe.\n";
+			}
+
+			if(checksample() == 0)
+			{
+				break;
+			}
+
+			sleep(1);
         }
 	}
 
@@ -47,17 +65,21 @@ class CLIENT
         while(1)
         {
             
-	    	if(ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL) == TRUE)
-            {   cout<<"The message is received on pipe.\n";
-				//mt.lock();
-                buffer[dwRead] = '\0';
-	        	cout << "The received message : " << buffer << endl;
-				sleep(1);
-		        //mt.unlock();
+	    	if(ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL) == FALSE)
+            { 
+				cout<<"\nThe message is not received on the pipe.\n";
+				cout<<"Server connection might went off.\n";
+				check = 0;
+				break;				  
             }
 			else
 			{
-				cout<<"The message is not received on the pipe.\n";
+				cout<<"\nThe message is received on pipe.\n";
+				//mt.lock();
+                buffer[dwRead] = '\0';
+	        	cout << "The received message : " << buffer << "\n\n";
+				sleep(1);
+		        //mt.unlock();
 			}
 			if(checksample() == 0)
 			{
@@ -73,6 +95,7 @@ class CLIENT
 		return CloseHandle(hPipe);
 	}
 };
+int CLIENT::check = 1;
 int main()
 {
 	// for (int i = 0; i < 10; i++)
@@ -84,14 +107,16 @@ int main()
 	// 	}
 	// 	Sleep(1000);
 	// }
-    CLIENT c;
-	c.createpipe();
-	if (c.checkfile() != 0)	
+	LPCSTR filename  = TEXT("\\\\.\\pipe\\MYFIFO");
+	LPCSTR filename1 = TEXT("\\\\.\\pipe\\MYFIFO1");
+    CLIENT client1(filename, GENERIC_READ, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	CLIENT client2(filename1, GENERIC_READ, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	if (client1.checkfile() != 0 && client2.checkfile() != 0)	
 	{
-        cout<<"The Server end is connected successfully.\n";
-		//thread pt2 (&CLIENT::write, &c);
-		thread pt3 (&CLIENT::read, &c);
-		//pt2.join();
+        cout<<"The Server end is connected successfully.\n\n";
+		thread pt2 (&CLIENT::write, &client2);
+		thread pt3 (&CLIENT::read, &client1);
+		pt2.join();
 		pt3.join();
 	}
 	else
@@ -102,13 +127,13 @@ int main()
 
 	cout << "The connection is broken.\n";
 
-	if(c.closeconnection() == 0)
+	if(client1.closeconnection() != 0 && client2.closeconnection() != 0) 
 	{
-		cout<<"Unable to close an open object handle.\n";
+		cout<<"Closes an open object handle.\n\n";
 	}
 	else
 	{
-		cout<<"Closes an open object handle.\n";
+		cout<<"Unable to close an open object handle.\n";
 	}
 
 	return 0;

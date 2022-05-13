@@ -9,19 +9,21 @@ using namespace std;
 class SERVER
 {
 	private:
+
 	mutex mt;
 	HANDLE hPipe;
 	char buffer[1024];
 	char sample[50];
 	DWORD dwRead, dwWritten;
 	int option = 0;
-	bool check = TRUE;
+	string a;
 
 	public:
+	static int check;
 
-	SERVER(DWORD dwOpenMode, DWORD dwPipeMode1, DWORD dwPipeMode2,DWORD dwPipeMode3, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut)
+	SERVER(LPCSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode1, DWORD dwPipeMode2,DWORD dwPipeMode3, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut)
 		{
-			hPipe = CreateNamedPipe(TEXT("\\\\.\\pipe\\MYFIFO"), dwOpenMode, dwPipeMode1 | dwPipeMode2 | dwPipeMode3, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, NULL);
+			hPipe = CreateNamedPipe(lpName, dwOpenMode, dwPipeMode1 | dwPipeMode2 | dwPipeMode3, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, NULL);
 		}
 
 	bool checkpipe()
@@ -34,20 +36,35 @@ class SERVER
 		return ConnectNamedPipe(hPipe, NULL);
 	}
 
-	void *checkread()
+	void checkread()
 	{
 		while (1)
-		{
-			
-			if(1 == 1)
-            {
-				ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL);
-				//mt.lock();
-		    	sleep(1);
-                buffer[dwRead] = '\0';
-		    	cout << "\nThe received message : " << buffer << endl;
-				//mt.unlock();
+		{   //const char *buffer[4] = "asd";
+		    //a="!@#";
+			// int n = a.length();
+			// strcpy(buffer, a);
+			cout<<"orginal buffer: "<<buffer<<endl;
+			if(ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL) == FALSE)
+            {   
+				cout<<"\nThe message is not received on the pipe.\n";
+				cout<<"Server connection might went off.\n";
+				check = 0;
+				break;				  
             }
+			else
+			{  
+				cout<<"\nThe message is received on pipe.\n";
+				//mt.lock();
+                buffer[dwRead] = '\0';
+	        	cout << "The received message : " << buffer << "\n\n";
+				sleep(1);
+		        //mt.unlock();
+
+			}
+			if(checksample() == 0)
+			{
+				break;
+			}
 			
 		}
 	}
@@ -56,13 +73,17 @@ class SERVER
 	{   
 		while (1)
 		{
-			cout << "enter your message   : ";
+			// cout << "enter your message   : ";
 			//mt.lock();
 			cin >> sample;
-
+			if(check == 0)
+			{
+				cin.ignore();
+				break;
+			}
 			if(WriteFile(hPipe, sample, sizeof(sample), &dwWritten, NULL) == TRUE)
 			{
-				cout<<"The message written on the pipe.\n";
+				cout<<"The message written on the pipe.\n\n";
 			}
 			else
 			{
@@ -89,24 +110,28 @@ class SERVER
 		return CloseHandle(hPipe);
 	}
 
-	int connection()
+	int disconnection()
 	{
 		return DisconnectNamedPipe(hPipe);
 	}
 
 };
+int SERVER::check = 1;
 int main(void)
-{
+{ 
+	LPCSTR filename  = TEXT("\\\\.\\pipe\\MYFIFO");
+	LPCSTR filename1 = TEXT("\\\\.\\pipe\\MYFIFO1");
 	
-	SERVER s(PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
-	if(s.checkpipe() != 0)
+	SERVER server1(filename, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
+	SERVER server2(filename1, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
+	if(server1.checkpipe() != 0 && server2.checkpipe() != 0)
 	{   cout<<"The namedpipe is created successfully.\n";
-		if(s.checkconnection() == TRUE)
+		if(server1.checkconnection() == TRUE && server2.checkconnection() == TRUE)
 		{
-			cout<<"The Client is connected successfully.\n";
-			//thread pt1(&SERVER::checkread, &s);
-	    	thread pt(&SERVER::checkwrite, &s);
-		    //pt1.join();
+			cout<<"The Client is connected successfully.\n\n";
+			thread pt1(&SERVER::checkread, &server2);
+	    	thread pt(&SERVER::checkwrite, &server1);
+		    pt1.join();
 		    pt.join();
 		}
 		else
@@ -123,22 +148,22 @@ int main(void)
     
 	cout << "The connection is broken.\n";
 	
-	if(s.connection() == 0)
-	{   cout<<GetLastError();
-		cout<<"Unable to disconnect the namedpipe.\n";
+	if(server1.disconnection() != 0 && server2.disconnection() != 0)
+	{   
+		cout<<"The namedpipe disconnected successfully.\n";
 	}
 	else
 	{
-		cout<<"The namedpipe disconnected successfull.\n";
+		cout<<"Unable to disconnect the namedpipe.\n";	
 	}
 	
-	if(s.closehandle() == 0)
+	if(server1.closehandle() != 0 && server2.closehandle() != 0)
 	{
-		cout<<"Unable to close an open object handle.\n";
+		cout<<"Closes an open object handle.\n\n";
 	}
 	else
 	{
-		cout<<"Closes an open object handle.\n";
+		cout<<"Unable to close an open object handle.\n";
 	}
 	
 	return 0;
