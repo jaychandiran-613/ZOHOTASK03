@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 using namespace std;
+
 #define FIFO_FILE "MYFIFO"
 class SERVER
 {
@@ -19,12 +20,12 @@ class SERVER
 	string a;
 
 	public:
-	static int check;
+		static int check;
 
-	SERVER(LPCSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode1, DWORD dwPipeMode2,DWORD dwPipeMode3, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut)
-		{
-			hPipe = CreateNamedPipe(lpName, dwOpenMode, dwPipeMode1 | dwPipeMode2 | dwPipeMode3, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, NULL);
-		}
+	SERVER(LPCSTR lpName, DWORD dwOpenMode, DWORD dwPipeMode1, DWORD dwPipeMode2, DWORD dwPipeMode3, DWORD nMaxInstances, DWORD nOutBufferSize, DWORD nInBufferSize, DWORD nDefaultTimeOut)
+	{
+		hPipe = CreateNamedPipe(lpName, dwOpenMode, dwPipeMode1 | dwPipeMode2 | dwPipeMode3, nMaxInstances, nOutBufferSize, nInBufferSize, nDefaultTimeOut, NULL);
+	}
 
 	bool checkpipe()
 	{
@@ -39,60 +40,65 @@ class SERVER
 	void checkread()
 	{
 		while (1)
-		{   //const char *buffer[4] = "asd";
-		    //a="!@#";
-			// int n = a.length();
-			// strcpy(buffer, a);
-			cout<<"orginal buffer: "<<buffer<<endl;
-			if(ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL) == FALSE)
-            {   
-				cout<<"\nThe message is not received on the pipe.\n";
-				cout<<"Server connection might went off.\n";
-				check = 0;
-				break;				  
-            }
-			else
-			{  
-				cout<<"\nThe message is received on pipe.\n";
-				//mt.lock();
-                buffer[dwRead] = '\0';
-	        	cout << "The received message : " << buffer << "\n\n";
-				sleep(1);
-		        //mt.unlock();
+		{
+			//	//char a[4]="p↨\0";
+			// strncpy(buffer,a,256);
+			bool check = ReadFile(hPipe, buffer, sizeof(buffer) - 1, &dwRead, NULL);
 
-			}
-			if(checksample() == 0)
+			if (check == FALSE)	// buffer.find("p↨") != string::npos ||
 			{
+				cout << "\nThe message is not received on the pipe.\n";
+				cout << "Server connection might went off.\n";
+				check = 0;
 				break;
 			}
-			
+
+			else if (check == TRUE)
+			{
+				cout << "\nThe message is received on pipe.\n";
+				//mt.lock();
+				buffer[dwRead] = '\0';
+				cout << "The received message : " << buffer << "\n\n";
+				sleep(1);
+				//mt.unlock();
+
+			}
+
+			// if(checksample() == 0)
+			// { 	terminate();
+			// 	break;
+			// }
 		}
 	}
 
 	void checkwrite()
-	{   
+	{
 		while (1)
 		{
 			// cout << "enter your message   : ";
 			//mt.lock();
+			// if(check == 0)
+			// {
+			// 	cin.ignore();
+			// 	break;
+			// }
+
 			cin >> sample;
-			if(check == 0)
+
+			if (WriteFile(hPipe, sample, sizeof(sample), &dwWritten, NULL) == TRUE)
 			{
-				cin.ignore();
-				break;
-			}
-			if(WriteFile(hPipe, sample, sizeof(sample), &dwWritten, NULL) == TRUE)
-			{
-				cout<<"The message written on the pipe.\n\n";
+				cout << "The message written on the pipe.\n\n";
 			}
 			else
 			{
-				cout<<"The message unable to write on pipe.\n";
+				cout << "The message unable to write on pipe.\n";
+				break;
 			}
 
-			if(checksample() == 0)
+			if (checksample() == 0)
 			{
-				break;
+				cout << "\nThe program stopped.\n";
+				abort();
 			}
 
 			sleep(1);
@@ -114,57 +120,58 @@ class SERVER
 	{
 		return DisconnectNamedPipe(hPipe);
 	}
-
 };
 int SERVER::check = 1;
 int main(void)
-{ 
-	LPCSTR filename  = TEXT("\\\\.\\pipe\\MYFIFO");
+{
+	LPCSTR filename = TEXT("\\\\.\\pipe\\MYFIFO");
 	LPCSTR filename1 = TEXT("\\\\.\\pipe\\MYFIFO1");
-	
+
 	SERVER server1(filename, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
 	SERVER server2(filename1, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
-	if(server1.checkpipe() != 0 && server2.checkpipe() != 0)
-	{   cout<<"The namedpipe is created successfully.\n";
-		if(server1.checkconnection() == TRUE && server2.checkconnection() == TRUE)
+	
+	if (server1.checkpipe() != 0 && server2.checkpipe() != 0)
+	{
+		cout << "The namedpipe is created successfully.\n";
+		if (server1.checkconnection() == TRUE && server2.checkconnection() == TRUE)
 		{
-			cout<<"The Client is connected successfully.\n\n";
+			cout << "The Client is connected successfully.\n\n";
 			thread pt1(&SERVER::checkread, &server2);
-	    	thread pt(&SERVER::checkwrite, &server1);
-		    pt1.join();
-		    pt.join();
+			thread pt(&SERVER::checkwrite, &server1);
+			pt1.join();
+			pt.join();
 		}
 		else
 		{
-			cout<<"Unable to connect to the client.\n";
+			cout << "Unable to connect to the client.\n";
 			return 0;
 		}
 	}
 	else
 	{
-		cout<<"Unable to Create the pipe\n";
+		cout << "Unable to Create the pipe\n";
 		return 0;
 	}
-    
+
 	cout << "The connection is broken.\n";
-	
-	if(server1.disconnection() != 0 && server2.disconnection() != 0)
-	{   
-		cout<<"The namedpipe disconnected successfully.\n";
+
+	if (server1.disconnection() != 0 && server2.disconnection() != 0)
+	{
+		cout << "The namedpipe disconnected successfully.\n";
 	}
 	else
 	{
-		cout<<"Unable to disconnect the namedpipe.\n";	
+		cout << "Unable to disconnect the namedpipe.\n";
 	}
-	
-	if(server1.closehandle() != 0 && server2.closehandle() != 0)
+
+	if (server1.closehandle() != 0 && server2.closehandle() != 0)
 	{
-		cout<<"Closes an open object handle.\n\n";
+		cout << "Closes an open object handle.\n\n";
 	}
 	else
 	{
-		cout<<"Unable to close an open object handle.\n";
+		cout << "Unable to close an open object handle.\n";
 	}
-	
+
 	return 0;
 }
