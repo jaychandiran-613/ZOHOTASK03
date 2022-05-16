@@ -48,8 +48,8 @@ class SERVER
 			if (check == FALSE)	// buffer.find("p↨") != string::npos ||
 			{
 				cout << "\nThe message is not received on the pipe.\n";
-				cout << "Server connection might went off.\n";
-				check = 0;
+				cout << "client connection might went off.\n";
+				abort();
 				break;
 			}
 
@@ -127,27 +127,28 @@ int main(void)
 	LPCSTR filename = TEXT("\\\\.\\pipe\\MYFIFO");
 	LPCSTR filename1 = TEXT("\\\\.\\pipe\\MYFIFO1");
 
-	SERVER server1(filename, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
-	SERVER server2(filename1, PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE, PIPE_READMODE_BYTE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
+	SERVER server1(filename, PIPE_ACCESS_OUTBOUND, PIPE_TYPE_MESSAGE, PIPE_READMODE_MESSAGE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
+	SERVER server2(filename1, PIPE_ACCESS_INBOUND, PIPE_TYPE_MESSAGE, PIPE_READMODE_MESSAGE, PIPE_WAIT, 1, 1024 * 16, 1024 * 16, NMPWAIT_USE_DEFAULT_WAIT);
 	
-	if (server1.checkpipe() != 0 && server2.checkpipe() != 0)
+	if (server1.checkpipe() != 0 && server2.checkpipe() != 0) 
 	{
 		cout << "The namedpipe is created successfully.\n";
 		if (server1.checkconnection() == TRUE && server2.checkconnection() == TRUE)
 		{
 			cout << "The Client is connected successfully.\n\n";
-			thread pt1(&SERVER::checkread, &server2);
+			thread pt1(&SERVER::checkread, &server2); 
 			thread pt(&SERVER::checkwrite, &server1);
 			pt1.join();
 			pt.join();
 		}
 		else
 		{
+			cout<<GetLastError();
 			cout << "Unable to connect to the client.\n";
 			return 0;
 		}
 	}
-	else
+	else 
 	{
 		cout << "Unable to Create the pipe\n";
 		return 0;

@@ -17,13 +17,13 @@ class CLIENT
 	public:
 		
 	static int check;
-	CLIENT(LPCSTR lpName, DWORD dwDesiredAccess1, DWORD dwDesiredAccess2, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
+	CLIENT(LPCSTR lpName, DWORD dwDesiredAccess1, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
 	{
 		int count = 0;
-		hPipe = CreateFile(lpName, dwDesiredAccess1 | dwDesiredAccess2, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+		hPipe = CreateFile(lpName, dwDesiredAccess1 , dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 		while (hPipe == INVALID_HANDLE_VALUE)
 		{
-			hPipe = CreateFile(lpName, dwDesiredAccess1 | dwDesiredAccess2, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+			hPipe = CreateFile(lpName, dwDesiredAccess1, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 			if (count++ == 5)
 			{
 				break;
@@ -74,7 +74,7 @@ class CLIENT
 
 	int checksample()
 	{
-		return strcmp(buffer, "end");
+		return strcmp(sample, "end");
 	}
 
 	void read()
@@ -86,7 +86,7 @@ class CLIENT
 				cout << "\nThe message is not received on the pipe.\n";
 				cout << "Server connection might went off.\n";
 				check = 0;
-				abort();
+				//abort();
 				break;
 			}
 			else
@@ -112,8 +112,8 @@ int main()
 	LPCSTR filename = TEXT("\\\\.\\pipe\\MYFIFO");
 	LPCSTR filename1 = TEXT("\\\\.\\pipe\\MYFIFO1");
 
-	CLIENT client1(filename, GENERIC_READ, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-	CLIENT client2(filename1, GENERIC_READ, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	CLIENT client1(filename  , GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
+	CLIENT client2(filename1, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
 	int count = 0;
 
@@ -127,9 +127,9 @@ int main()
 		pt2.join();
 		pt3.join();
 	}
-	else
-	{
-		cout << "Unable to create the name of the file.\n";
+	else if(GetLastError() == 2)
+	{  
+		cout << "The system cannot find the file specified..\n";
 		return 0;
 	}
 
@@ -139,7 +139,7 @@ int main()
 	{
 		cout << "Closes an open object handle.\n\n";
 	}
-	else
+	else 
 	{
 		cout << "Unable to close an open object handle.\n";
 	}
